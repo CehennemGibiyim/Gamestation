@@ -1,0 +1,2011 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SHADOWBORN: Chronicles of the Fallen Realm</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=MedievalSharp&display=swap');
+
+  :root {
+    --gold: #c8a84b;
+    --gold-light: #f0d080;
+    --gold-dark: #8a6c20;
+    --blood: #8b1a1a;
+    --blood-light: #cc2222;
+    --dark: #0a0608;
+    --dark2: #120d10;
+    --dark3: #1e1420;
+    --panel: rgba(10,5,15,0.92);
+    --border: rgba(200,168,75,0.4);
+    --text: #e8dcc0;
+    --hp: #cc2222;
+    --mp: #2255cc;
+    --xp: #44aa22;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background:#000;
+    font-family:'Cinzel', serif;
+    color:var(--text);
+    overflow:hidden;
+    width:100vw; height:100vh;
+    user-select:none;
+  }
+
+  /* ─── LOADING SCREEN ─── */
+  #loading {
+    position:fixed; inset:0; z-index:9999;
+    background: radial-gradient(ellipse at 50% 60%, #1a0a00 0%, #000 70%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:24px;
+  }
+  #loading h1 {
+    font-family:'Cinzel Decorative',serif;
+    font-size:clamp(22px,5vw,56px);
+    background: linear-gradient(180deg,#f0d080 0%,#c8a84b 50%,#8a6c20 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    text-align:center;
+    text-shadow: 0 0 40px rgba(200,168,75,0.5);
+    letter-spacing:4px;
+  }
+  #loading .sub {
+    font-size:clamp(10px,2vw,16px);
+    color:rgba(200,168,75,0.6);
+    letter-spacing:8px;
+    text-transform:uppercase;
+  }
+  .load-bar-wrap {
+    width:min(400px,80vw); height:6px;
+    background:rgba(255,255,255,0.1);
+    border-radius:3px;
+    border:1px solid var(--gold-dark);
+    overflow:hidden;
+  }
+  .load-bar {
+    height:100%;
+    background: linear-gradient(90deg,var(--gold-dark),var(--gold-light),var(--gold-dark));
+    background-size:200% 100%;
+    animation: loadpulse 1.5s linear infinite;
+    width:0%;
+    transition:width 0.3s;
+  }
+  @keyframes loadpulse {
+    0%{background-position:0% 0%} 100%{background-position:200% 0%}
+  }
+  .load-tip {
+    font-size:12px; color:rgba(200,168,75,0.5);
+    max-width:400px; text-align:center; line-height:1.6;
+  }
+
+  /* ─── MAIN GAME CANVAS ─── */
+  #gameCanvas {
+    position:fixed; inset:0;
+    width:100vw; height:100vh;
+    display:block;
+  }
+
+  /* ─── PARTICLE OVERLAY ─── */
+  #particleCanvas {
+    position:fixed; inset:0;
+    width:100vw; height:100vh;
+    pointer-events:none;
+    z-index:2;
+  }
+
+  /* ─── HUD ─── */
+  #hud {
+    position:fixed; inset:0; z-index:10;
+    pointer-events:none;
+    display:none;
+  }
+
+  /* Top bar */
+  .hud-top {
+    position:absolute; top:0; left:0; right:0;
+    height:70px;
+    background: linear-gradient(180deg,rgba(5,2,8,0.95) 0%,transparent 100%);
+    display:flex; align-items:center; gap:12px;
+    padding:0 16px;
+    border-bottom:1px solid rgba(200,168,75,0.2);
+  }
+
+  .avatar-frame {
+    width:52px; height:52px;
+    border:2px solid var(--gold);
+    border-radius:4px;
+    position:relative;
+    background: linear-gradient(135deg,#2a1a0a,#3d1515);
+    overflow:hidden;
+    box-shadow:0 0 12px rgba(200,168,75,0.4), inset 0 0 8px rgba(0,0,0,0.8);
+    flex-shrink:0;
+  }
+
+  .avatar-art {
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px;
+  }
+
+  .avatar-level {
+    position:absolute; bottom:-1px; left:50%; transform:translateX(-50%);
+    background:var(--gold);
+    color:#000;
+    font-size:9px; font-weight:700;
+    padding:1px 6px;
+    border-radius:2px 2px 0 0;
+    letter-spacing:1px;
+  }
+
+  .player-info { flex:1; min-width:0; }
+  .player-name {
+    font-family:'Cinzel Decorative',serif;
+    font-size:13px; color:var(--gold-light);
+    letter-spacing:1px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .player-class {
+    font-size:10px; color:rgba(200,168,75,0.6);
+    letter-spacing:2px; text-transform:uppercase;
+  }
+
+  .bars-group { display:flex; flex-direction:column; gap:5px; }
+  .bar-row { display:flex; align-items:center; gap:6px; }
+  .bar-label { font-size:9px; color:rgba(200,168,75,0.7); width:16px; letter-spacing:1px; }
+  .bar-track {
+    width:min(180px,22vw); height:10px;
+    background:rgba(0,0,0,0.6);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:2px;
+    overflow:hidden;
+    position:relative;
+  }
+  .bar-fill {
+    height:100%;
+    border-radius:2px;
+    transition:width 0.3s ease;
+    position:relative;
+  }
+  .bar-fill::after {
+    content:'';
+    position:absolute; top:0; left:0; right:0;
+    height:40%;
+    background:rgba(255,255,255,0.15);
+    border-radius:inherit;
+  }
+  .bar-hp .bar-fill { background:linear-gradient(90deg,#5a0a0a,#cc2222); }
+  .bar-mp .bar-fill { background:linear-gradient(90deg,#0a1a5a,#2255cc); }
+  .bar-xp .bar-fill { background:linear-gradient(90deg,#1a4a0a,#44aa22); }
+  .bar-val {
+    font-size:9px; color:rgba(200,168,75,0.8);
+    min-width:60px; text-align:right;
+  }
+
+  /* Currency / stats strip */
+  .hud-stats {
+    display:flex; gap:16px; margin-left:auto;
+    align-items:center;
+  }
+  .stat-chip {
+    display:flex; align-items:center; gap:5px;
+    background:rgba(0,0,0,0.6);
+    border:1px solid rgba(200,168,75,0.25);
+    border-radius:4px;
+    padding:4px 10px;
+    font-size:12px;
+  }
+  .stat-icon { font-size:14px; }
+
+  /* Skill bar bottom */
+  .hud-bottom {
+    position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    padding-bottom:12px;
+  }
+
+  .skill-bar {
+    display:flex; gap:6px;
+    background:rgba(5,2,8,0.85);
+    border:1px solid rgba(200,168,75,0.35);
+    border-radius:8px;
+    padding:8px 12px;
+    box-shadow:0 0 20px rgba(0,0,0,0.8), 0 0 40px rgba(200,168,75,0.05);
+  }
+
+  .skill-slot {
+    width:56px; height:56px;
+    border:2px solid rgba(200,168,75,0.4);
+    border-radius:6px;
+    background: linear-gradient(135deg,rgba(30,10,10,0.9),rgba(20,15,30,0.9));
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:2px;
+    cursor:pointer;
+    pointer-events:all;
+    position:relative;
+    transition:all 0.15s;
+    overflow:hidden;
+  }
+  .skill-slot:hover {
+    border-color:var(--gold);
+    box-shadow:0 0 15px rgba(200,168,75,0.3);
+    transform:translateY(-2px);
+  }
+  .skill-slot:active { transform:translateY(0); }
+  .skill-slot.on-cooldown::after {
+    content:'';
+    position:absolute; inset:0;
+    background:rgba(0,0,0,0.6);
+    animation:cooldownAnim 0.1s linear;
+  }
+  .skill-icon { font-size:22px; line-height:1; }
+  .skill-key {
+    font-size:9px; color:rgba(200,168,75,0.6);
+    background:rgba(0,0,0,0.5);
+    padding:1px 4px; border-radius:2px;
+  }
+  .skill-cd {
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; font-weight:700; color:#fff;
+    text-shadow:0 0 8px rgba(0,0,0,1);
+    pointer-events:none;
+    opacity:0;
+  }
+  .skill-slot.on-cooldown .skill-cd { opacity:1; }
+
+  /* Boss HP bar */
+  .boss-bar {
+    position:absolute; top:80px; left:50%; transform:translateX(-50%);
+    width:min(500px,70vw);
+    display:none;
+  }
+  .boss-bar.visible { display:block; }
+  .boss-name-row {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:4px;
+  }
+  .boss-name {
+    font-family:'Cinzel Decorative',serif;
+    font-size:14px; color:#ff4444;
+    text-shadow:0 0 10px rgba(255,0,0,0.5);
+    letter-spacing:2px;
+  }
+  .boss-lvl { font-size:11px; color:rgba(255,100,100,0.7); }
+  .boss-track {
+    height:18px;
+    background:rgba(0,0,0,0.7);
+    border:1px solid rgba(200,30,30,0.5);
+    border-radius:3px;
+    overflow:hidden;
+    position:relative;
+  }
+  .boss-fill {
+    height:100%;
+    background:linear-gradient(90deg,#3a0000,#cc0000,#ff4444);
+    transition:width 0.4s ease;
+    position:relative;
+  }
+  .boss-fill::after {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:40%;
+    background:rgba(255,255,255,0.1);
+  }
+
+  /* Minimap */
+  .minimap {
+    position:absolute; bottom:20px; right:16px;
+    width:120px; height:120px;
+    border:2px solid rgba(200,168,75,0.4);
+    border-radius:4px;
+    background:rgba(5,2,8,0.9);
+    overflow:hidden;
+  }
+  .minimap canvas { width:100%; height:100%; }
+
+  /* Damage floats */
+  .dmg-float {
+    position:fixed;
+    font-family:'Cinzel Decorative',serif;
+    font-weight:700;
+    pointer-events:none;
+    z-index:20;
+    animation:floatUp 1.2s ease-out forwards;
+    text-shadow:0 2px 6px rgba(0,0,0,0.9);
+    letter-spacing:1px;
+  }
+  @keyframes floatUp {
+    0%   { opacity:1; transform:translateY(0) scale(1.2); }
+    20%  { opacity:1; transform:translateY(-20px) scale(1); }
+    100% { opacity:0; transform:translateY(-80px) scale(0.8); }
+  }
+
+  /* Loot popup */
+  .loot-popup {
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:var(--panel);
+    border:2px solid var(--gold);
+    border-radius:8px;
+    padding:20px 28px;
+    min-width:260px;
+    z-index:30;
+    display:none;
+    text-align:center;
+    box-shadow:0 0 40px rgba(200,168,75,0.3), 0 0 80px rgba(0,0,0,0.9);
+  }
+  .loot-popup.visible { display:block; animation:popIn 0.3s ease-out; }
+  @keyframes popIn {
+    from{ transform:translate(-50%,-50%) scale(0.7); opacity:0; }
+    to  { transform:translate(-50%,-50%) scale(1); opacity:1; }
+  }
+  .loot-title {
+    font-family:'Cinzel Decorative',serif;
+    font-size:16px; color:var(--gold-light);
+    margin-bottom:12px; letter-spacing:2px;
+  }
+  .loot-item {
+    display:flex; align-items:center; gap:10px;
+    padding:8px 12px;
+    border:1px solid rgba(200,168,75,0.2);
+    border-radius:4px;
+    margin-bottom:8px;
+    background:rgba(255,255,255,0.03);
+    text-align:left;
+  }
+  .loot-icon { font-size:24px; }
+  .loot-info { flex:1; }
+  .loot-name { font-size:12px; color:var(--gold-light); }
+  .loot-rarity { font-size:10px; }
+  .loot-close {
+    margin-top:12px;
+    padding:8px 24px;
+    background:linear-gradient(135deg,var(--gold-dark),var(--gold));
+    border:none; border-radius:4px;
+    color:#000; font-family:'Cinzel',serif; font-weight:700;
+    font-size:12px; letter-spacing:2px;
+    cursor:pointer; pointer-events:all;
+    transition:all 0.2s;
+  }
+  .loot-close:hover { background:linear-gradient(135deg,var(--gold),var(--gold-light)); }
+
+  /* Level up */
+  .levelup-screen {
+    position:fixed; inset:0; z-index:25;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at 50% 50%, rgba(200,168,75,0.15) 0%, transparent 70%);
+    pointer-events:none;
+    opacity:0;
+    transition:opacity 0.5s;
+  }
+  .levelup-screen.show { opacity:1; }
+  .levelup-text {
+    font-family:'Cinzel Decorative',serif;
+    font-size:clamp(28px,6vw,72px);
+    background:linear-gradient(180deg,#fff8dc 0%,#f0d080 40%,#c8a84b 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    letter-spacing:6px;
+    animation:levelPulse 0.6s ease-in-out infinite alternate;
+    text-align:center;
+  }
+  @keyframes levelPulse {
+    from{ filter:drop-shadow(0 0 10px rgba(200,168,75,0.5)); }
+    to  { filter:drop-shadow(0 0 30px rgba(200,168,75,0.9)); }
+  }
+  .levelup-lvl {
+    font-size:clamp(14px,3vw,28px);
+    color:var(--gold-light);
+    letter-spacing:4px;
+    margin-top:8px;
+  }
+
+  /* Quest log side panel */
+  .quest-panel {
+    position:absolute; top:80px; right:16px;
+    width:min(220px,30vw);
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:6px;
+    overflow:hidden;
+  }
+  .quest-header {
+    background:linear-gradient(90deg,rgba(200,168,75,0.15),rgba(200,168,75,0.05));
+    padding:8px 12px;
+    font-size:11px; color:var(--gold); letter-spacing:2px;
+    border-bottom:1px solid var(--border);
+  }
+  .quest-item {
+    padding:8px 12px;
+    font-size:10px;
+    border-bottom:1px solid rgba(255,255,255,0.04);
+    line-height:1.4;
+  }
+  .quest-name { color:var(--gold-light); margin-bottom:2px; }
+  .quest-progress { color:rgba(200,168,75,0.5); }
+
+  /* Zone name */
+  .zone-name {
+    position:absolute; top:80px; left:50%; transform:translateX(-50%);
+    font-family:'Cinzel Decorative',serif;
+    font-size:clamp(11px,2vw,18px);
+    color:rgba(200,168,75,0.7);
+    letter-spacing:4px;
+    text-transform:uppercase;
+    white-space:nowrap;
+    pointer-events:none;
+    transition:opacity 0.5s;
+    text-shadow:0 0 20px rgba(0,0,0,0.9);
+  }
+
+  /* Mobile joystick */
+  .joystick-zone {
+    position:absolute; bottom:80px; left:20px;
+    width:110px; height:110px;
+    display:none;
+    pointer-events:all;
+  }
+  @media(max-width:768px){ .joystick-zone{display:block;} }
+
+  .joystick-base {
+    width:100%; height:100%;
+    border-radius:50%;
+    background:rgba(0,0,0,0.4);
+    border:2px solid rgba(200,168,75,0.3);
+    position:relative;
+  }
+  .joystick-knob {
+    position:absolute;
+    width:44px; height:44px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,rgba(200,168,75,0.8),rgba(100,60,10,0.9));
+    border:2px solid var(--gold);
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    transition:transform 0.05s;
+    box-shadow:0 0 12px rgba(200,168,75,0.4);
+  }
+
+  /* Tooltip */
+  .tooltip {
+    position:fixed; z-index:50;
+    background:rgba(5,2,10,0.96);
+    border:1px solid var(--gold-dark);
+    border-radius:6px;
+    padding:10px 14px;
+    font-size:11px;
+    max-width:200px;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity 0.15s;
+    line-height:1.6;
+  }
+  .tooltip.show { opacity:1; }
+  .tt-name { font-size:13px; color:var(--gold-light); margin-bottom:4px; }
+  .tt-type { color:rgba(200,168,75,0.6); font-size:10px; letter-spacing:1px; }
+  .tt-desc { color:var(--text); margin-top:6px; }
+
+  /* Scrolling ambient text */
+  @keyframes ambientScroll {
+    from{ background-position:0 0; }
+    to  { background-position:1000px 1000px; }
+  }
+
+  /* Chat / log */
+  .combat-log {
+    position:absolute; bottom:90px; left:16px;
+    width:min(260px,35vw);
+    max-height:120px;
+    overflow:hidden;
+    display:flex; flex-direction:column-reverse;
+    gap:2px;
+    pointer-events:none;
+  }
+  .log-entry {
+    font-size:10px; color:rgba(220,200,180,0.7);
+    background:rgba(0,0,0,0.4);
+    padding:2px 8px;
+    border-left:2px solid rgba(200,168,75,0.3);
+    border-radius:0 2px 2px 0;
+    animation:logFade 6s ease forwards;
+  }
+  @keyframes logFade { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0} }
+  .log-entry.dmg { border-left-color:var(--blood-light); color:#ff8888; }
+  .log-entry.heal { border-left-color:#44aa22; color:#88ff44; }
+  .log-entry.gold-log { border-left-color:var(--gold); color:var(--gold-light); }
+  .log-entry.lvl { border-left-color:#aaaaff; color:#ccccff; }
+
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div style="font-size:clamp(10px,1.5vw,13px);color:rgba(200,168,75,0.5);letter-spacing:12px;text-transform:uppercase;margin-bottom:20px;">Shadowborn Studios</div>
+  <h1>SHADOWBORN</h1>
+  <div class="sub">Chronicles of the Fallen Realm</div>
+  <div class="load-bar-wrap"><div class="load-bar" id="loadBar"></div></div>
+  <div class="load-tip" id="loadTip">Karanlık alemlerin kapıları açılıyor...</div>
+</div>
+
+<!-- GAME CANVAS -->
+<canvas id="gameCanvas"></canvas>
+<canvas id="particleCanvas"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+
+  <!-- Top bar -->
+  <div class="hud-top">
+    <div class="avatar-frame">
+      <div class="avatar-art" id="avatarArt">⚔️</div>
+      <div class="avatar-level" id="avatarLevel">LV 1</div>
+    </div>
+    <div class="player-info">
+      <div class="player-name" id="playerName">SHADOWBANE</div>
+      <div class="player-class" id="playerClass">Dark Paladin</div>
+    </div>
+    <div class="bars-group">
+      <div class="bar-row">
+        <div class="bar-label">HP</div>
+        <div class="bar-track"><div class="bar-fill bar-hp" id="hpBar" style="width:100%"></div></div>
+        <div class="bar-val" id="hpVal">1000/1000</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">MP</div>
+        <div class="bar-track"><div class="bar-fill bar-mp" id="mpBar" style="width:100%"></div></div>
+        <div class="bar-val" id="mpVal">500/500</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">XP</div>
+        <div class="bar-track"><div class="bar-fill bar-xp" id="xpBar" style="width:0%"></div></div>
+        <div class="bar-val" id="xpVal">0/500</div>
+      </div>
+    </div>
+    <div class="hud-stats">
+      <div class="stat-chip"><span class="stat-icon">🪙</span><span id="goldCount">0</span></div>
+      <div class="stat-chip"><span class="stat-icon">💎</span><span id="gemCount">0</span></div>
+      <div class="stat-chip"><span class="stat-icon">⚔️</span><span id="killCount">0</span></div>
+    </div>
+  </div>
+
+  <!-- Zone name -->
+  <div class="zone-name" id="zoneName">THE FORSAKEN CRYPTS</div>
+
+  <!-- Boss bar -->
+  <div class="boss-bar" id="bossBar">
+    <div class="boss-name-row">
+      <div class="boss-name" id="bossName">MALACHAR THE UNDYING</div>
+      <div class="boss-lvl" id="bossLvl">☠ BOSS LV.25</div>
+    </div>
+    <div class="boss-track"><div class="boss-fill" id="bossFill" style="width:100%"></div></div>
+  </div>
+
+  <!-- Quest panel -->
+  <div class="quest-panel">
+    <div class="quest-header">📜 AKTİF GÖREVLER</div>
+    <div class="quest-item">
+      <div class="quest-name">Gölge Efendisini Öldür</div>
+      <div class="quest-progress" id="q1prog">0/1 Boss öldürüldü</div>
+    </div>
+    <div class="quest-item">
+      <div class="quest-name">50 Canavar Öldür</div>
+      <div class="quest-progress" id="q2prog">0/50 Canavar</div>
+    </div>
+    <div class="quest-item">
+      <div class="quest-name">Efsanevi Eşya Bul</div>
+      <div class="quest-progress" id="q3prog">0/3 Efsanevi</div>
+    </div>
+  </div>
+
+  <!-- Skill bar -->
+  <div class="hud-bottom">
+    <div class="skill-bar" id="skillBar"></div>
+  </div>
+
+  <!-- Combat log -->
+  <div class="combat-log" id="combatLog"></div>
+
+  <!-- Minimap -->
+  <div class="minimap"><canvas id="minimapCanvas" width="120" height="120"></canvas></div>
+
+  <!-- Joystick (mobile) -->
+  <div class="joystick-zone" id="joystickZone">
+    <div class="joystick-base" id="joystickBase">
+      <div class="joystick-knob" id="joystickKnob"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- LOOT POPUP -->
+<div class="loot-popup" id="lootPopup">
+  <div class="loot-title">⚡ EŞYA DÜŞTÜ!</div>
+  <div id="lootItems"></div>
+  <button class="loot-close" onclick="closeLoot()">TOPLA</button>
+</div>
+
+<!-- LEVEL UP -->
+<div class="levelup-screen" id="levelupScreen">
+  <div class="levelup-text">SEVİYE ATLADI!</div>
+  <div class="levelup-lvl" id="levelupLvl">LV. 2</div>
+</div>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip">
+  <div class="tt-name" id="ttName"></div>
+  <div class="tt-type" id="ttType"></div>
+  <div class="tt-desc" id="ttDesc"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   SHADOWBORN: Chronicles of the Fallen Realm
+   Full Game Engine v1.0
+   ═══════════════════════════════════════════════════ */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const pCanvas = document.getElementById('particleCanvas');
+const pCtx = pCanvas.getContext('2d');
+const mmCanvas = document.getElementById('minimapCanvas');
+const mmCtx = mmCanvas.getContext('2d');
+
+let W, H;
+function resize(){
+  W = canvas.width = pCanvas.width = window.innerWidth;
+  H = canvas.height = pCanvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+/* ─── GAME STATE ─── */
+const GS = {
+  phase: 'loading', // loading | menu | playing | dead
+  tick: 0,
+  camera: {x:0, y:0},
+  world: {w:3000, h:3000},
+  currentZone: 0,
+  bossActive: false,
+  bossKilled: false,
+  paused: false,
+};
+
+const PLAYER = {
+  x: 1500, y: 1500,
+  w: 32, h: 44,
+  hp: 1000, maxHp: 1000,
+  mp: 500,  maxMp: 500,
+  xp: 0, xpNext: 500,
+  level: 1,
+  gold: 0,
+  gems: 0,
+  kills: 0,
+  legendaryFound: 0,
+  bossKills: 0,
+  speed: 3.2,
+  atk: 120,
+  def: 40,
+  crit: 0.2,
+  invincible: 0,
+  moving: {up:false,down:false,left:false,right:false},
+  facing: 1, // 1 right, -1 left
+  animFrame: 0,
+  animTimer: 0,
+  attackTimer: 0,
+  hpRegen: 0,
+  regenTimer: 0,
+  // Equipped
+  class: 'Dark Paladin',
+  classIcon: '⚔️',
+};
+
+/* ─── LOADING SEQUENCE ─── */
+const LOAD_TIPS = [
+  "Karanlık alemlerin kapıları açılıyor...",
+  "Boss canavarlar uyandırılıyor...",
+  "Efsanevi eşyalar demirlenip çıkarılıyor...",
+  "Drakensang zırhları kuşanılıyor...",
+  "Albion Online savaşçıları saf tutuluyor...",
+  "Knight Online ejderhaları çağırılıyor...",
+  "Parçacık sistemi hazırlanıyor...",
+  "Dünya haritası oluşturuluyor...",
+  "Oyun başlamak için hazır!",
+];
+
+let loadProgress = 0;
+const loadBar = document.getElementById('loadBar');
+const loadTip = document.getElementById('loadTip');
+let tipIdx = 0;
+function doLoad(){
+  let i = 0;
+  const iv = setInterval(()=>{
+    loadProgress = Math.min(100, loadProgress + (Math.random()*8+3));
+    loadBar.style.width = loadProgress + '%';
+    tipIdx = Math.floor((loadProgress/100)*LOAD_TIPS.length);
+    loadTip.textContent = LOAD_TIPS[Math.min(tipIdx, LOAD_TIPS.length-1)];
+    if(loadProgress >= 100){
+      clearInterval(iv);
+      setTimeout(startGame, 600);
+    }
+  }, 120);
+}
+doLoad();
+
+function startGame(){
+  document.getElementById('loading').style.opacity = '0';
+  document.getElementById('loading').style.transition = 'opacity 0.8s';
+  setTimeout(()=>{
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('hud').style.display = 'block';
+    GS.phase = 'playing';
+    buildSkillBar();
+    spawnEnemies();
+    spawnBoss();
+    requestAnimationFrame(gameLoop);
+  }, 800);
+}
+
+/* ─── ZONE DEFINITIONS ─── */
+const ZONES = [
+  { name:'THE FORSAKEN CRYPTS', bgColor1:'#08040c', bgColor2:'#120a18', accent:'#4a1a6a' },
+  { name:'INFERNO WASTES',       bgColor1:'#120400', bgColor2:'#1e0800', accent:'#6a1a00' },
+  { name:'FROZEN ABYSS',         bgColor1:'#04080c', bgColor2:'#0a1018', accent:'#1a4a6a' },
+];
+
+/* ─── WORLD GENERATION ─── */
+const TILES = [];
+const TILE_SIZE = 64;
+const MAP_COLS = Math.ceil(3000/TILE_SIZE);
+const MAP_ROWS = Math.ceil(3000/TILE_SIZE);
+
+// Simple seeded random
+function srand(s){ let x=s; return ()=>{ x = (x*1664525+1013904223)&0xffffffff; return (x>>>0)/0xffffffff; }; }
+const rng = srand(42);
+
+// Tile types: 0=floor, 1=wall, 2=water, 3=lava, 4=grass, 5=ruin
+const tileColors = [
+  ['#1a1020','#221630'], // floor
+  ['#0d0810','#160c1c'], // wall (darker)
+  ['#0a1a2a','#102040'], // water
+  ['#2a0800','#3a1000'], // lava
+  ['#0a1a08','#102010'], // grass
+  ['#18100e','#221812'], // ruin
+];
+const tileEmojis = ['','🗿','💧','🔥','🌿','🏚️'];
+
+// Generate map
+const mapData = [];
+for(let r=0;r<MAP_ROWS;r++){
+  mapData[r] = [];
+  for(let c=0;c<MAP_COLS;c++){
+    const v = rng();
+    if(v < 0.08) mapData[r][c] = 1;      // wall
+    else if(v < 0.12) mapData[r][c] = 2; // water
+    else if(v < 0.15) mapData[r][c] = 3; // lava
+    else if(v < 0.20) mapData[r][c] = 4; // grass
+    else if(v < 0.22) mapData[r][c] = 5; // ruin
+    else mapData[r][c] = 0;              // floor
+  }
+}
+// Clear spawn area
+for(let r=20;r<26;r++) for(let c=20;c<26;c++) mapData[r][c]=0;
+
+function isSolid(x,y){
+  const c = Math.floor(x/TILE_SIZE), r = Math.floor(y/TILE_SIZE);
+  if(r<0||r>=MAP_ROWS||c<0||c>=MAP_COLS) return true;
+  return mapData[r][c]===1;
+}
+
+/* ─── DECORATIONS ─── */
+const DECOS = [];
+const decoTypes = [
+  {e:'💀',prob:0.02},{e:'🕯️',prob:0.015},{e:'⚰️',prob:0.01},
+  {e:'🗡️',prob:0.01},{e:'🦇',prob:0.01},{e:'🕸️',prob:0.02},
+  {e:'🌑',prob:0.01},{e:'💎',prob:0.003},{e:'🔮',prob:0.005},
+];
+for(let i=0;i<400;i++){
+  const dx = rng()*2800+100, dy = rng()*2800+100;
+  const r = Math.floor(dy/TILE_SIZE), c = Math.floor(dx/TILE_SIZE);
+  if(mapData[r]&&mapData[r][c]===0){
+    const dt = decoTypes[Math.floor(rng()*decoTypes.length)];
+    if(rng()<dt.prob*10) DECOS.push({x:dx,y:dy,e:dt.e,scale:0.6+rng()*0.6,alpha:0.4+rng()*0.5});
+  }
+}
+
+/* ─── ENEMY DEFINITIONS (from Drakensang, Albion, Knight Online) ─── */
+const ENEMY_TYPES = [
+  // Common (from Drakensang Online)
+  { name:'Karanlık Ruh',   emoji:'💀', hp:200,  xp:30,  gold:[5,15],   atk:25,  speed:1.2, size:28, color:'#aa44aa', rarity:'common' },
+  { name:'Kemik Golem',    emoji:'🦴', hp:350,  xp:55,  gold:[10,25],  atk:40,  speed:0.8, size:34, color:'#ccbbaa', rarity:'common' },
+  { name:'Vampir Şövalye', emoji:'🧛', hp:420,  xp:80,  gold:[15,40],  atk:60,  speed:1.5, size:30, color:'#880000', rarity:'uncommon' },
+  { name:'Lanetli Büyücü', emoji:'🧙', hp:280,  xp:65,  gold:[20,50],  atk:75,  speed:1.0, size:26, color:'#6644cc', rarity:'uncommon' },
+  // From Albion Online
+  { name:'Albion Keşişi',  emoji:'⛪', hp:500,  xp:100, gold:[25,60],  atk:55,  speed:1.1, size:32, color:'#4488cc', rarity:'uncommon' },
+  { name:'Demir Savaşçı',  emoji:'🛡️', hp:600,  xp:120, gold:[30,70],  atk:70,  speed:0.9, size:36, color:'#445566', rarity:'rare' },
+  { name:'Gölge Avcı',     emoji:'🏹', hp:350,  xp:90,  gold:[20,55],  atk:85,  speed:1.6, size:26, color:'#335544', rarity:'uncommon' },
+  // From Knight Online
+  { name:'Kötü Ruhlu Ork', emoji:'👹', hp:450,  xp:85,  gold:[20,50],  atk:65,  speed:1.2, size:32, color:'#225500', rarity:'common' },
+  { name:'Ateş Cini',      emoji:'🔥', hp:380,  xp:70,  gold:[18,45],  atk:80,  speed:1.4, size:28, color:'#aa3300', rarity:'uncommon' },
+  { name:'Buz Devası',     emoji:'🌨️', hp:700,  xp:150, gold:[40,90],  atk:90,  speed:0.7, size:42, color:'#aaccff', rarity:'rare' },
+  { name:'Ejderha Yavru',  emoji:'🐲', hp:550,  xp:130, gold:[35,80],  atk:100, speed:1.3, size:38, color:'#006633', rarity:'rare' },
+];
+
+// Tour Boss types (Drakensang + Albion + Knight Online bosses)
+const BOSS_TYPES = [
+  { name:'MALACHAR EL ÖLÜMSİZ',  emoji:'💀', hp:15000, xp:2000, gold:[500,1000], atk:200, speed:0.8, size:72, color:'#aa00ff', origin:'Drakensang Online Boss' },
+  { name:'ALBION KARANLIĞI',      emoji:'🏰', hp:18000, xp:2500, gold:[600,1200], atk:250, speed:0.7, size:80, color:'#0044cc', origin:'Albion Online Boss'   },
+  { name:'KNİGHT DEMİR TANRISI',  emoji:'⚔️', hp:20000, xp:3000, gold:[700,1500], atk:300, speed:0.9, size:76, color:'#cc4400', origin:'Knight Online Boss'   },
+  { name:'GÖLGE EJDERHASİ VRYX',  emoji:'🐉', hp:25000, xp:4000, gold:[1000,2000],atk:350, speed:1.1, size:96, color:'#006600', origin:'Dragon Boss'          },
+  { name:'ZAMAN DEĞİŞTİREN LYSS', emoji:'🌀', hp:22000, xp:3500, gold:[800,1600], atk:280, speed:1.0, size:84, color:'#660066', origin:'Drakensang Boss'       },
+];
+
+const enemies = [];
+const BOSS = { active:false, data:null, x:0, y:0, hp:0, maxHp:0, angle:0, phase:0, timer:0, enrage:false, dead:false };
+
+function spawnEnemies(){
+  enemies.length = 0;
+  for(let i=0;i<60;i++){
+    const t = ENEMY_TYPES[Math.floor(rng()*ENEMY_TYPES.length)];
+    let ex, ey, attempts=0;
+    do {
+      ex = 200 + rng()*2600; ey = 200 + rng()*2600;
+      attempts++;
+    } while((Math.abs(ex-PLAYER.x)<200&&Math.abs(ey-PLAYER.y)<200) && attempts<20);
+    const maxHp = t.hp + Math.floor(rng()*t.hp*0.3);
+    enemies.push({
+      ...t, x:ex, y:ey, hp:maxHp, maxHp, angle:0,
+      state:'idle', // idle|chase|attack|hurt|dead
+      timer:0, deadTimer:0,
+      id: Math.random(),
+      drop: Math.random(),
+      anim:0, animTimer:0,
+    });
+  }
+}
+
+function spawnBoss(){
+  const bt = BOSS_TYPES[Math.floor(Math.random()*BOSS_TYPES.length)];
+  BOSS.active = true;
+  BOSS.dead   = false;
+  BOSS.data   = bt;
+  BOSS.x      = 1800 + rng()*200;
+  BOSS.y      = 1800 + rng()*200;
+  BOSS.hp     = bt.hp;
+  BOSS.maxHp  = bt.hp;
+  BOSS.phase  = 1;
+  BOSS.timer  = 0;
+  BOSS.enrage = false;
+
+  document.getElementById('bossBar').classList.add('visible');
+  document.getElementById('bossName').textContent = bt.name;
+  document.getElementById('bossLvl').textContent = '☠ BOSS LV.'+(PLAYER.level+10+Math.floor(Math.random()*5));
+  document.getElementById('bossFill').style.width = '100%';
+  addLog(`☠ Boss belirdi: ${bt.name}!`, 'dmg');
+}
+
+/* ─── LOOT TABLE ─── */
+const LOOT_TABLE = [
+  // Common
+  { name:'Kemik Kılıcı',      emoji:'🗡️', rarity:'common',    color:'#aaaaaa', type:'Silah',   power:'+15 ATK'    },
+  { name:'Karanlık Zırh',     emoji:'🛡️', rarity:'common',    color:'#aaaaaa', type:'Zırh',    power:'+10 DEF'    },
+  { name:'Şifa İksiri',       emoji:'🧪', rarity:'common',    color:'#aaaaaa', type:'Tüketim', power:'+200 HP'    },
+  { name:'Mana İksiri',       emoji:'🫧', rarity:'common',    color:'#aaaaaa', type:'Tüketim', power:'+100 MP'    },
+  // Uncommon
+  { name:'Ruh Parçalayıcı',   emoji:'⚔️', rarity:'uncommon',  color:'#55ff55', type:'Silah',   power:'+40 ATK, %5 Crit' },
+  { name:'Gölge Eldiveni',    emoji:'🧤', rarity:'uncommon',  color:'#55ff55', type:'Eldiven',  power:'+20 DEF, +10 ATK' },
+  { name:'Sürat Botları',     emoji:'👢', rarity:'uncommon',  color:'#55ff55', type:'Bot',      power:'+0.5 Hareket'     },
+  // Rare
+  { name:'Ejderha Ölçeği',    emoji:'🐲', rarity:'rare',      color:'#5599ff', type:'Zırh',    power:'+60 DEF, +Yangın' },
+  { name:'Korsan Yüzüğü',     emoji:'💍', rarity:'rare',      color:'#5599ff', type:'Aksesuar',power:'+30 ATK, +30 DEF'  },
+  { name:'Karizmatik Miğfer', emoji:'⛑️', rarity:'rare',      color:'#5599ff', type:'Kask',    power:'+50 DEF, +5% Crit' },
+  // Epic
+  { name:'Lanetli Bıçak',     emoji:'🗡️', rarity:'epic',      color:'#aa44ff', type:'Silah',   power:'+100 ATK, Ruh Çal' },
+  { name:'Ölümsüz Zırh',      emoji:'🛡️', rarity:'epic',      color:'#aa44ff', type:'Zırh',    power:'+120 DEF, Yeniden Doğuş' },
+  // Legendary
+  { name:'KARANLIğIN KILIÇ',  emoji:'⚡', rarity:'legendary', color:'#ffaa00', type:'Efsanevi Silah', power:'+250 ATK, Efsanevi Efekt' },
+  { name:'GÖLGE TAÇ',         emoji:'👑', rarity:'legendary', color:'#ffaa00', type:'Efsanevi Baş',   power:'+150 DEF, +50% XP'        },
+];
+
+function rollLoot(enemy){
+  const drops = [];
+  const r = Math.random();
+  if(r < 0.05){ // legendary 5%
+    drops.push(LOOT_TABLE[LOOT_TABLE.length-1-Math.floor(Math.random()*2)]);
+    PLAYER.legendaryFound++;
+  } else if(r < 0.20){ // epic 15%
+    drops.push(LOOT_TABLE[10+Math.floor(Math.random()*2)]);
+  } else if(r < 0.45){ // rare 25%
+    drops.push(LOOT_TABLE[7+Math.floor(Math.random()*3)]);
+  } else if(r < 0.70){ // uncommon 25%
+    drops.push(LOOT_TABLE[4+Math.floor(Math.random()*3)]);
+  } else if(r < 0.90){ // common 20%
+    drops.push(LOOT_TABLE[Math.floor(Math.random()*4)]);
+  }
+  // Gold always
+  const g = Math.floor(enemy.gold[0] + Math.random()*(enemy.gold[1]-enemy.gold[0]));
+  return { items: drops, gold: g };
+}
+
+/* ─── SKILLS ─── */
+const SKILLS = [
+  { name:'Güçlü Saldırı',  key:'Q', emoji:'⚔️',  mp:20,  cd:1.5,  dmgMult:1.8, desc:'Güçlü yakın saldırı. 1.8x hasar.', cdLeft:0 },
+  { name:'Alev Patlaması', key:'W', emoji:'🔥',  mp:60,  cd:4,    dmgMult:2.5, aoe:true, desc:'Alan etkili ateş saldırısı. 2.5x hasar.', cdLeft:0 },
+  { name:'Ruh Çekimi',     key:'E', emoji:'💜',  mp:40,  cd:6,    dmgMult:2.0, heal:true, desc:'Can emer, kendinizi iyileştirirsiniz.', cdLeft:0 },
+  { name:'Buz Zırhı',      key:'R', emoji:'🌨️',  mp:80,  cd:12,   dmgMult:1.0, shield:true, desc:'3 saniyelik hasar engeli!', cdLeft:0 },
+  { name:'Şimşek Kılıç',  key:'T', emoji:'⚡',  mp:50,  cd:5,    dmgMult:3.0, desc:'Yıldırım hızlı şimşek saldırısı.', cdLeft:0 },
+  { name:'İyileşme Işını', key:'Y', emoji:'💚',  mp:70,  cd:10,   dmgMult:0,   selfHeal:true, desc:'Anında 300 HP kazanırsınız.', cdLeft:0 },
+  { name:'Karanlık Patlama',key:'U',emoji:'💥',  mp:100, cd:15,   dmgMult:4.0, aoe:true, desc:'Dev alan saldırısı. 4x hasar!', cdLeft:0 },
+  { name:'Teleport',       key:'I', emoji:'🌀',  mp:30,  cd:8,    dmgMult:0,   teleport:true, desc:'İmlece ışınlanırsınız.', cdLeft:0 },
+];
+
+function buildSkillBar(){
+  const bar = document.getElementById('skillBar');
+  bar.innerHTML = '';
+  SKILLS.forEach((s,i)=>{
+    const slot = document.createElement('div');
+    slot.className = 'skill-slot';
+    slot.id = 'skill-'+i;
+    slot.innerHTML = `<div class="skill-icon">${s.emoji}</div><div class="skill-key">${s.key}</div><div class="skill-cd" id="scd-${i}"></div>`;
+    slot.addEventListener('click', ()=>castSkill(i));
+    slot.addEventListener('mouseover', e=>showTooltip(e,s.name,s.desc,`MP: ${s.mp} | CD: ${s.cd}s`));
+    slot.addEventListener('mouseout', hideTooltip);
+    bar.appendChild(slot);
+  });
+}
+
+/* ─── PARTICLES ─── */
+const particles = [];
+function spawnParticles(x,y,type,count=8){
+  for(let i=0;i<count;i++){
+    const a = Math.random()*Math.PI*2;
+    const spd = 1+Math.random()*4;
+    let color='#ffcc44';
+    if(type==='fire')    color=`hsl(${10+Math.random()*40},100%,${40+Math.random()*40}%)`;
+    if(type==='blood')   color=`hsl(${0+Math.random()*20},80%,${30+Math.random()*20}%)`;
+    if(type==='ice')     color=`hsl(${190+Math.random()*30},80%,${60+Math.random()*30}%)`;
+    if(type==='heal')    color=`hsl(${100+Math.random()*40},80%,${50+Math.random()*30}%)`;
+    if(type==='magic')   color=`hsl(${260+Math.random()*60},90%,${50+Math.random()*30}%)`;
+    if(type==='gold')    color=`hsl(${40+Math.random()*20},90%,${50+Math.random()*30}%)`;
+    if(type==='boss')    color=`hsl(${0+Math.random()*60},100%,${40+Math.random()*40}%)`;
+    particles.push({
+      x, y,
+      vx: Math.cos(a)*spd, vy: Math.sin(a)*spd,
+      life: 0.8+Math.random()*0.8,
+      maxLife: 0.8+Math.random()*0.8,
+      size: 2+Math.random()*6,
+      color, type,
+      gravity: type==='fire'?-0.08:0.05,
+    });
+  }
+}
+
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx; p.y+=p.vy;
+    p.vy+=p.gravity;
+    p.vx*=0.97; p.vy*=0.97;
+    p.life-=dt;
+    if(p.life<=0) particles.splice(i,1);
+  }
+}
+
+function drawParticles(){
+  pCtx.clearRect(0,0,W,H);
+  const cx = W/2 - GS.camera.x;
+  const cy = H/2 - GS.camera.y;
+  particles.forEach(p=>{
+    const a = Math.max(0, p.life/p.maxLife);
+    pCtx.save();
+    pCtx.globalAlpha = a;
+    pCtx.shadowBlur = 8;
+    pCtx.shadowColor = p.color;
+    pCtx.fillStyle = p.color;
+    pCtx.beginPath();
+    pCtx.arc(p.x+cx, p.y+cy, p.size*a, 0, Math.PI*2);
+    pCtx.fill();
+    pCtx.restore();
+  });
+}
+
+/* ─── DAMAGE FLOATS ─── */
+function showDamage(x,y,val,color='#ff4444',size=18){
+  const el = document.createElement('div');
+  el.className = 'dmg-float';
+  el.style.cssText = `
+    left:${x}px; top:${y}px;
+    font-size:${size}px;
+    color:${color};
+    left:${x - 20 + Math.random()*40}px;
+  `;
+  el.textContent = val < 0 ? '+'+Math.abs(val) : val;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 1300);
+}
+
+function worldToScreen(wx,wy){
+  return { x: wx - GS.camera.x + W/2, y: wy - GS.camera.y + H/2 };
+}
+
+/* ─── COMBAT LOG ─── */
+const logEl = document.getElementById('combatLog');
+function addLog(text, cls=''){
+  const e = document.createElement('div');
+  e.className = 'log-entry' + (cls?' '+cls:'');
+  e.textContent = text;
+  logEl.prepend(e);
+  while(logEl.children.length > 6) logEl.lastChild.remove();
+}
+
+/* ─── TOOLTIP ─── */
+const ttEl = document.getElementById('tooltip');
+function showTooltip(e, name, desc, extra=''){
+  document.getElementById('ttName').textContent = name;
+  document.getElementById('ttType').textContent = extra;
+  document.getElementById('ttDesc').textContent = desc;
+  ttEl.style.left = (e.clientX+12)+'px';
+  ttEl.style.top  = (e.clientY+12)+'px';
+  ttEl.classList.add('show');
+}
+function hideTooltip(){ ttEl.classList.remove('show'); }
+
+/* ─── INPUT ─── */
+const keys = {};
+document.addEventListener('keydown', e=>{
+  const k = e.key.toUpperCase();
+  keys[k] = true;
+  PLAYER.moving.up    = keys['W']||keys['ARROWUP'];
+  PLAYER.moving.down  = keys['S']||keys['ARROWDOWN'];
+  PLAYER.moving.left  = keys['A']||keys['ARROWLEFT'];
+  PLAYER.moving.right = keys['D']||keys['ARROWRIGHT'];
+  // Skills
+  SKILLS.forEach((s,i)=>{ if(k===s.key) castSkill(i); });
+  // Attack
+  if(k===' '||k==='Z') playerAttack(false);
+});
+document.addEventListener('keyup', e=>{
+  const k = e.key.toUpperCase();
+  keys[k] = false;
+  PLAYER.moving.up    = keys['W']||keys['ARROWUP'];
+  PLAYER.moving.down  = keys['S']||keys['ARROWDOWN'];
+  PLAYER.moving.left  = keys['A']||keys['ARROWLEFT'];
+  PLAYER.moving.right = keys['D']||keys['ARROWRIGHT'];
+});
+
+// Click to attack
+canvas.addEventListener('click', e=>{
+  if(GS.phase!=='playing') return;
+  const wx = e.clientX - W/2 + GS.camera.x;
+  const wy = e.clientY - H/2 + GS.camera.y;
+  playerAttack(false, wx, wy);
+});
+
+// Right click for skill 0
+canvas.addEventListener('contextmenu', e=>{
+  e.preventDefault();
+  castSkill(0);
+});
+
+// Mobile joystick
+let joyActive=false, joyStartX=0, joyStartY=0;
+const jBase=document.getElementById('joystickBase');
+const jKnob=document.getElementById('joystickKnob');
+const jZone=document.getElementById('joystickZone');
+jZone.addEventListener('touchstart',e=>{
+  joyActive=true;
+  const t=e.touches[0];
+  joyStartX=t.clientX; joyStartY=t.clientY;
+},{ passive:true });
+jZone.addEventListener('touchmove',e=>{
+  if(!joyActive) return;
+  const t=e.touches[0];
+  const dx=t.clientX-joyStartX, dy=t.clientY-joyStartY;
+  const dist=Math.min(40,Math.sqrt(dx*dx+dy*dy));
+  const a=Math.atan2(dy,dx);
+  const mx=Math.cos(a)*dist, my=Math.sin(a)*dist;
+  jKnob.style.transform=`translate(calc(-50% + ${mx}px),calc(-50% + ${my}px))`;
+  PLAYER.moving.left  = dx < -10;
+  PLAYER.moving.right = dx > 10;
+  PLAYER.moving.up    = dy < -10;
+  PLAYER.moving.down  = dy > 10;
+},{ passive:true });
+jZone.addEventListener('touchend',()=>{
+  joyActive=false;
+  jKnob.style.transform='translate(-50%,-50%)';
+  PLAYER.moving.left=PLAYER.moving.right=PLAYER.moving.up=PLAYER.moving.down=false;
+});
+
+/* ─── SKILL CAST ─── */
+function castSkill(idx){
+  if(GS.phase!=='playing') return;
+  const s = SKILLS[idx];
+  if(s.cdLeft > 0 || PLAYER.mp < s.mp) return;
+  PLAYER.mp -= s.mp;
+  s.cdLeft = s.cd;
+  const slot = document.getElementById('skill-'+idx);
+  slot.classList.add('on-cooldown');
+
+  // Effects
+  if(s.aoe){
+    // Area damage
+    enemies.forEach(en=>{
+      if(en.state==='dead') return;
+      const d=dist(PLAYER.x,PLAYER.y,en.x,en.y);
+      if(d<200){
+        const dmg = Math.floor(PLAYER.atk*s.dmgMult*(Math.random()<PLAYER.crit?1.5:1)*(1-en.hp*0.0001));
+        dealDamage(en, dmg);
+        spawnParticles(en.x, en.y, s.emoji==='🔥'?'fire':'magic', 12);
+      }
+    });
+    // Boss
+    if(BOSS.active && !BOSS.dead){
+      const d = dist(PLAYER.x,PLAYER.y,BOSS.x,BOSS.y);
+      if(d<300){
+        const dmg = Math.floor(PLAYER.atk*s.dmgMult*2*(Math.random()<PLAYER.crit?1.5:1));
+        damageBoss(dmg);
+        spawnParticles(BOSS.x,BOSS.y,'boss',20);
+      }
+    }
+    spawnParticles(PLAYER.x,PLAYER.y, s.emoji==='🔥'?'fire':'magic', 30);
+    addLog(`🔥 ${s.name} kullanıldı — Alan Hasarı!`, 'dmg');
+  } else if(s.heal || s.selfHeal){
+    const healAmt = s.selfHeal ? 300 : PLAYER.atk*0.5;
+    PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp+healAmt);
+    spawnParticles(PLAYER.x,PLAYER.y,'heal',15);
+    const sp = worldToScreen(PLAYER.x,PLAYER.y);
+    showDamage(sp.x,sp.y,`+${Math.floor(healAmt)}`,'#44ff44',16);
+    addLog(`💚 ${s.name}: +${Math.floor(healAmt)} HP`, 'heal');
+  } else if(s.shield){
+    PLAYER.invincible = 3000;
+    spawnParticles(PLAYER.x,PLAYER.y,'ice',20);
+    addLog(`🌨️ Buz Zırhı etkinleşti!`,'');
+  } else if(s.teleport){
+    // teleport toward boss or random
+    const tx = PLAYER.x + (Math.random()*300-150);
+    const ty = PLAYER.y + (Math.random()*300-150);
+    PLAYER.x=Math.max(50,Math.min(GS.world.w-50,tx));
+    PLAYER.y=Math.max(50,Math.min(GS.world.h-50,ty));
+    spawnParticles(PLAYER.x,PLAYER.y,'magic',20);
+    addLog(`🌀 Teleport!`,'');
+  } else {
+    playerAttack(true, null, null, s.dmgMult);
+    spawnParticles(PLAYER.x,PLAYER.y,s.emoji==='⚡'?'fire':'magic',10);
+    addLog(`${s.emoji} ${s.name} — ${s.dmgMult}x Hasar!`,'dmg');
+  }
+  updateBars();
+}
+
+/* ─── PLAYER ATTACK ─── */
+function playerAttack(isSkill=false, tx=null, ty=null, mult=1){
+  if(GS.phase!=='playing') return;
+  if(PLAYER.attackTimer > 0) return;
+  PLAYER.attackTimer = isSkill ? 300 : 500;
+
+  const range = 80;
+  let hit = false;
+
+  // Attack enemies
+  enemies.forEach(en=>{
+    if(en.state==='dead') return;
+    const d = dist(PLAYER.x,PLAYER.y,en.x,en.y);
+    if(d <= range + en.size){
+      const isCrit = Math.random() < PLAYER.crit;
+      const dmg = Math.floor(PLAYER.atk * mult * (isCrit?2:1));
+      dealDamage(en, dmg);
+      if(isCrit) spawnParticles(en.x,en.y,'magic',6);
+      else spawnParticles(en.x,en.y,'blood',4);
+      hit = true;
+    }
+  });
+
+  // Attack boss
+  if(BOSS.active && !BOSS.dead){
+    const d = dist(PLAYER.x,PLAYER.y,BOSS.x,BOSS.y);
+    if(d <= range + BOSS.data.size){
+      const isCrit = Math.random() < PLAYER.crit;
+      const dmg = Math.floor(PLAYER.atk * mult * (isCrit?2:1));
+      damageBoss(dmg);
+      spawnParticles(BOSS.x,BOSS.y,'boss',isCrit?15:8);
+      hit = true;
+    }
+  }
+}
+
+function dealDamage(en, dmg){
+  en.hp -= dmg;
+  const sp = worldToScreen(en.x, en.y);
+  showDamage(sp.x, sp.y-30, dmg, '#ff6644', 15+Math.floor(dmg/30));
+  en.state = 'hurt'; en.timer = 300;
+  spawnParticles(en.x,en.y,'blood',4);
+
+  if(en.hp <= 0){
+    killEnemy(en);
+  }
+}
+
+function killEnemy(en){
+  en.state='dead'; en.deadTimer=800;
+  en.hp=0;
+  PLAYER.kills++;
+  PLAYER.xp += en.xp;
+  const gold = Math.floor(en.gold[0]+Math.random()*(en.gold[1]-en.gold[0]));
+  PLAYER.gold += gold;
+  spawnParticles(en.x,en.y,'gold',8);
+  spawnParticles(en.x,en.y,'blood',6);
+  addLog(`💀 ${en.name} öldürüldü! +${en.xp} XP, +${gold}🪙`, 'gold-log');
+
+  // Loot
+  const loot = rollLoot(en);
+  if(loot.items.length > 0){
+    showLoot(loot);
+  }
+
+  checkLevelUp();
+  updateBars();
+  updateHUD();
+}
+
+function damageBoss(dmg){
+  BOSS.hp = Math.max(0, BOSS.hp-dmg);
+  const pct = BOSS.hp/BOSS.maxHp;
+  document.getElementById('bossFill').style.width=(pct*100)+'%';
+  const sp = worldToScreen(BOSS.x,BOSS.y);
+  showDamage(sp.x,sp.y-50,dmg,'#ff2222',20+Math.floor(dmg/100));
+
+  // Enrage phase
+  if(pct < 0.3 && !BOSS.enrage){
+    BOSS.enrage = true;
+    addLog(`⚠️ ${BOSS.data.name} ÖFKELENDI! 2x hasar!`, 'dmg');
+    spawnParticles(BOSS.x,BOSS.y,'fire',30);
+  }
+
+  if(BOSS.hp <= 0) killBoss();
+}
+
+function killBoss(){
+  BOSS.dead = true;
+  BOSS.active = false;
+  PLAYER.xp += BOSS.data.xp;
+  PLAYER.gold += BOSS.data.gold[0]+Math.floor(Math.random()*(BOSS.data.gold[1]-BOSS.data.gold[0]));
+  PLAYER.gems += 3+Math.floor(Math.random()*5);
+  PLAYER.bossKills++;
+
+  for(let i=0;i<30;i++) spawnParticles(BOSS.x+Math.random()*100-50, BOSS.y+Math.random()*100-50,'boss',10);
+  spawnParticles(BOSS.x,BOSS.y,'gold',40);
+
+  document.getElementById('bossBar').classList.remove('visible');
+  addLog(`🏆 BOSS YENİLDİ: ${BOSS.data.name}! +${BOSS.data.xp} XP!`, 'gold-log');
+
+  // Epic loot
+  const bossLoot = {
+    items:[LOOT_TABLE[LOOT_TABLE.length-1-Math.floor(Math.random()*4)]],
+    gold: BOSS.data.gold[0]
+  };
+  setTimeout(()=>{ showLoot(bossLoot); }, 1000);
+
+  checkLevelUp();
+  updateBars();
+  updateHUD();
+
+  // Respawn boss after delay
+  setTimeout(()=>{
+    if(GS.phase==='playing'){
+      spawnBoss();
+    }
+  }, 20000);
+}
+
+/* ─── LOOT DISPLAY ─── */
+function showLoot(loot){
+  const pop = document.getElementById('lootPopup');
+  const itemsEl = document.getElementById('lootItems');
+  itemsEl.innerHTML = '';
+  loot.items.forEach(item=>{
+    itemsEl.innerHTML += `
+      <div class="loot-item">
+        <div class="loot-icon">${item.emoji}</div>
+        <div class="loot-info">
+          <div class="loot-name">${item.name}</div>
+          <div class="loot-rarity" style="color:${item.color}">${item.rarity.toUpperCase()} — ${item.power}</div>
+        </div>
+      </div>`;
+  });
+  itemsEl.innerHTML += `<div class="loot-item"><div class="loot-icon">🪙</div><div class="loot-info"><div class="loot-name">${loot.gold} Altın</div></div></div>`;
+  pop.classList.add('visible');
+  setTimeout(closeLoot, 4000);
+}
+function closeLoot(){ document.getElementById('lootPopup').classList.remove('visible'); }
+
+/* ─── LEVEL UP ─── */
+function checkLevelUp(){
+  while(PLAYER.xp >= PLAYER.xpNext){
+    PLAYER.xp -= PLAYER.xpNext;
+    PLAYER.level++;
+    PLAYER.xpNext = Math.floor(PLAYER.xpNext * 1.4 + PLAYER.level*50);
+    PLAYER.maxHp += 100; PLAYER.hp = PLAYER.maxHp;
+    PLAYER.maxMp += 30; PLAYER.mp = PLAYER.maxMp;
+    PLAYER.atk += 15;
+    PLAYER.def += 8;
+    PLAYER.crit = Math.min(0.5, PLAYER.crit+0.01);
+    spawnParticles(PLAYER.x,PLAYER.y,'magic',30);
+    showLevelUp();
+    addLog(`✨ SEVİYE ATLADI! Artık Lv.${PLAYER.level}`, 'lvl');
+  }
+}
+
+let lvlUpTimer = null;
+function showLevelUp(){
+  const sc = document.getElementById('levelupScreen');
+  document.getElementById('levelupLvl').textContent = 'LV. '+PLAYER.level;
+  sc.classList.add('show');
+  if(lvlUpTimer) clearTimeout(lvlUpTimer);
+  lvlUpTimer = setTimeout(()=>sc.classList.remove('show'), 2500);
+  document.getElementById('avatarLevel').textContent = 'LV '+PLAYER.level;
+}
+
+/* ─── HUD UPDATE ─── */
+function updateBars(){
+  const hpP = PLAYER.hp/PLAYER.maxHp*100;
+  const mpP = PLAYER.mp/PLAYER.maxMp*100;
+  const xpP = PLAYER.xp/PLAYER.xpNext*100;
+  document.getElementById('hpBar').style.width=hpP+'%';
+  document.getElementById('mpBar').style.width=mpP+'%';
+  document.getElementById('xpBar').style.width=xpP+'%';
+  document.getElementById('hpVal').textContent=Math.floor(PLAYER.hp)+'/'+PLAYER.maxHp;
+  document.getElementById('mpVal').textContent=Math.floor(PLAYER.mp)+'/'+PLAYER.maxMp;
+  document.getElementById('xpVal').textContent=PLAYER.xp+'/'+PLAYER.xpNext;
+}
+
+function updateHUD(){
+  document.getElementById('goldCount').textContent = PLAYER.gold;
+  document.getElementById('gemCount').textContent  = PLAYER.gems;
+  document.getElementById('killCount').textContent = PLAYER.kills;
+  document.getElementById('q1prog').textContent = PLAYER.bossKills+'/1 Boss öldürüldü';
+  document.getElementById('q2prog').textContent = PLAYER.kills+'/50 Canavar';
+  document.getElementById('q3prog').textContent = PLAYER.legendaryFound+'/3 Efsanevi';
+}
+
+/* ─── ENEMY AI ─── */
+function updateEnemies(dt){
+  const detectionRange = 250;
+  const attackRange = 50;
+
+  enemies.forEach(en=>{
+    if(en.state==='dead'){
+      en.deadTimer -= dt;
+      if(en.deadTimer <= 0){
+        // Respawn
+        let nx,ny,att=0;
+        do {
+          nx=200+Math.random()*2600; ny=200+Math.random()*2600; att++;
+        } while(dist(nx,ny,PLAYER.x,PLAYER.y)<200&&att<10);
+        const t=ENEMY_TYPES[Math.floor(Math.random()*ENEMY_TYPES.length)];
+        Object.assign(en,t);
+        en.x=nx; en.y=ny;
+        en.hp=en.maxHp=t.hp;
+        en.state='idle'; en.timer=0;
+        en.drop=Math.random();
+      }
+      return;
+    }
+
+    en.timer -= dt;
+    en.animTimer -= dt;
+    if(en.animTimer<=0){ en.anim=(en.anim+1)%4; en.animTimer=200; }
+
+    const d = dist(PLAYER.x,PLAYER.y,en.x,en.y);
+
+    if(en.state==='hurt' && en.timer<=0) en.state = d<detectionRange?'chase':'idle';
+
+    if(d < detectionRange){
+      en.state='chase';
+      const angle = Math.atan2(PLAYER.y-en.y, PLAYER.x-en.x);
+      const spd = en.speed * (BOSS.enrage&&en===BOSS.data?2:1);
+      const nx = en.x+Math.cos(angle)*spd;
+      const ny = en.y+Math.sin(angle)*spd;
+      if(!isSolid(nx,ny)){ en.x=nx; en.y=ny; }
+      en.angle=angle;
+
+      if(d < en.size + 20){
+        en.state='attack';
+        if(en.timer<=0){
+          en.timer=1500;
+          if(PLAYER.invincible<=0){
+            const dmg=Math.max(1,en.atk - PLAYER.def + Math.floor(Math.random()*20));
+            PLAYER.hp-=dmg;
+            const sp=worldToScreen(PLAYER.x,PLAYER.y);
+            showDamage(sp.x,sp.y-40,dmg,'#ff4444',16);
+            spawnParticles(PLAYER.x,PLAYER.y,'blood',4);
+            addLog(`${en.emoji} ${en.name} saldırdı: -${dmg} HP`,'dmg');
+            if(PLAYER.hp<=0){ GS.phase='dead'; onDeath(); }
+          }
+          updateBars();
+        }
+      }
+    } else {
+      if(en.state==='chase') en.state='idle';
+    }
+  });
+}
+
+/* ─── BOSS AI ─── */
+function updateBoss(dt){
+  if(!BOSS.active || BOSS.dead) return;
+  BOSS.timer -= dt;
+  const d = dist(PLAYER.x,PLAYER.y,BOSS.x,BOSS.y);
+  const mult = BOSS.enrage?2:1;
+
+  // Move toward player
+  if(d > 80){
+    const a = Math.atan2(PLAYER.y-BOSS.y, PLAYER.x-BOSS.x);
+    BOSS.x += Math.cos(a)*BOSS.data.speed*mult;
+    BOSS.y += Math.sin(a)*BOSS.data.speed*mult;
+    BOSS.angle = a;
+  }
+
+  // Attack
+  if(d < BOSS.data.size + 40 && BOSS.timer<=0){
+    BOSS.timer = BOSS.enrage?800:1500;
+    if(PLAYER.invincible<=0){
+      const dmg = Math.max(1,BOSS.data.atk*mult - PLAYER.def + Math.floor(Math.random()*50));
+      PLAYER.hp -= dmg;
+      const sp = worldToScreen(PLAYER.x,PLAYER.y);
+      showDamage(sp.x,sp.y-50,dmg,'#ff0000',22);
+      spawnParticles(PLAYER.x,PLAYER.y,'boss',8);
+      addLog(`☠ ${BOSS.data.name}: -${dmg} HP!`,'dmg');
+      if(PLAYER.hp<=0){ GS.phase='dead'; onDeath(); }
+      updateBars();
+    }
+  }
+
+  // Boss special attacks every 5s
+  if(BOSS.timer <= 0 && Math.random()<0.3){
+    // Summon minions
+    for(let i=0;i<3;i++){
+      const a=Math.random()*Math.PI*2;
+      const mx=BOSS.x+Math.cos(a)*120, my=BOSS.y+Math.sin(a)*120;
+      const t=ENEMY_TYPES[Math.floor(Math.random()*4)];
+      enemies.push({...t,x:mx,y:my,hp:t.hp,maxHp:t.hp,state:'chase',timer:0,deadTimer:0,id:Math.random(),drop:Math.random(),anim:0,animTimer:0,angle:0});
+      spawnParticles(mx,my,'boss',10);
+    }
+    addLog(`☠ Boss yardımcı çağırdı!`,'dmg');
+  }
+}
+
+/* ─── PLAYER UPDATE ─── */
+function updatePlayer(dt){
+  const spd = PLAYER.speed * (PLAYER.invincible>0?1.2:1);
+  let dx=0, dy=0;
+  if(PLAYER.moving.up)    dy-=spd;
+  if(PLAYER.moving.down)  dy+=spd;
+  if(PLAYER.moving.left)  { dx-=spd; PLAYER.facing=-1; }
+  if(PLAYER.moving.right) { dx+=spd; PLAYER.facing=1;  }
+  if(dx!==0&&dy!==0){ dx*=0.707; dy*=0.707; }
+
+  const nx=PLAYER.x+dx, ny=PLAYER.y+dy;
+  if(!isSolid(nx, PLAYER.y)) PLAYER.x=Math.max(20,Math.min(GS.world.w-20,nx));
+  if(!isSolid(PLAYER.x, ny)) PLAYER.y=Math.max(20,Math.min(GS.world.h-20,ny));
+
+  // Animations
+  PLAYER.animTimer+=dt;
+  if(PLAYER.animTimer>120){ PLAYER.animTimer=0; PLAYER.animFrame=(PLAYER.animFrame+1)%4; }
+
+  // Timers
+  if(PLAYER.attackTimer>0) PLAYER.attackTimer-=dt;
+  if(PLAYER.invincible>0)  PLAYER.invincible-=dt;
+
+  // MP regen
+  PLAYER.regenTimer+=dt;
+  if(PLAYER.regenTimer>=2000){
+    PLAYER.regenTimer=0;
+    PLAYER.mp=Math.min(PLAYER.maxMp,PLAYER.mp+20);
+    PLAYER.hp=Math.min(PLAYER.maxHp,PLAYER.hp+5);
+    updateBars();
+  }
+
+  // Skill cooldowns
+  SKILLS.forEach((s,i)=>{
+    if(s.cdLeft>0){
+      s.cdLeft-=dt/1000;
+      if(s.cdLeft<=0){
+        s.cdLeft=0;
+        const slot=document.getElementById('skill-'+i);
+        slot.classList.remove('on-cooldown');
+      }
+      const cdEl=document.getElementById('scd-'+i);
+      if(cdEl) cdEl.textContent=s.cdLeft>0?s.cdLeft.toFixed(1):'';
+    }
+  });
+
+  // Camera
+  GS.camera.x += (PLAYER.x - GS.camera.x)*0.1;
+  GS.camera.y += (PLAYER.y - GS.camera.y)*0.1;
+
+  // Ambient particles
+  if(Math.random()<0.03) spawnParticles(PLAYER.x+Math.random()*30-15,PLAYER.y,'magic',1);
+}
+
+/* ─── DRAW WORLD ─── */
+function drawWorld(){
+  const z = ZONES[GS.currentZone];
+  // Sky gradient
+  const grad = ctx.createRadialGradient(W/2,H/2,100,W/2,H*0.8,Math.max(W,H));
+  grad.addColorStop(0, z.bgColor2);
+  grad.addColorStop(1, z.bgColor1);
+  ctx.fillStyle=grad;
+  ctx.fillRect(0,0,W,H);
+
+  const offX = W/2 - GS.camera.x;
+  const offY = H/2 - GS.camera.y;
+
+  // Draw visible tiles
+  const startC = Math.max(0, Math.floor((GS.camera.x-W/2)/TILE_SIZE));
+  const endC   = Math.min(MAP_COLS-1, Math.ceil((GS.camera.x+W/2)/TILE_SIZE));
+  const startR = Math.max(0, Math.floor((GS.camera.y-H/2)/TILE_SIZE));
+  const endR   = Math.min(MAP_ROWS-1, Math.ceil((GS.camera.y+H/2)/TILE_SIZE));
+
+  for(let r=startR;r<=endR;r++){
+    for(let c=startC;c<=endC;c++){
+      const t = mapData[r][c];
+      const tx=c*TILE_SIZE+offX, ty=r*TILE_SIZE+offY;
+      const cols = tileColors[t];
+      // checkerboard shade
+      const shade = (r+c)%2===0 ? cols[0] : cols[1];
+      ctx.fillStyle=shade;
+      ctx.fillRect(tx,ty,TILE_SIZE,TILE_SIZE);
+
+      // Subtle grid line
+      ctx.strokeStyle='rgba(0,0,0,0.15)';
+      ctx.lineWidth=0.5;
+      ctx.strokeRect(tx,ty,TILE_SIZE,TILE_SIZE);
+
+      // Wall details
+      if(t===1){
+        ctx.fillStyle='rgba(0,0,0,0.4)';
+        ctx.fillRect(tx+2,ty+2,TILE_SIZE-4,TILE_SIZE-4);
+        // Stones
+        ctx.fillStyle='rgba(255,255,255,0.04)';
+        ctx.fillRect(tx+5,ty+5,TILE_SIZE/2-8,TILE_SIZE/2-8);
+        ctx.fillRect(tx+TILE_SIZE/2+3,ty+TILE_SIZE/2+3,TILE_SIZE/2-8,TILE_SIZE/2-8);
+      }
+
+      // Lava glow
+      if(t===3){
+        const glow=Math.sin(GS.tick*0.01+r+c)*0.3+0.5;
+        ctx.fillStyle=`rgba(255,${Math.floor(glow*80)},0,0.3)`;
+        ctx.fillRect(tx,ty,TILE_SIZE,TILE_SIZE);
+      }
+
+      // Water shimmer
+      if(t===2){
+        const shimmer=Math.sin(GS.tick*0.02+c*0.5)*0.2+0.3;
+        ctx.fillStyle=`rgba(50,150,255,${shimmer})`;
+        ctx.fillRect(tx,ty,TILE_SIZE,4);
+      }
+    }
+  }
+
+  // Grid overlay (fog of depth)
+  const fogGrad = ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.75);
+  fogGrad.addColorStop(0,'transparent');
+  fogGrad.addColorStop(1,'rgba(0,0,0,0.5)');
+  ctx.fillStyle=fogGrad;
+  ctx.fillRect(0,0,W,H);
+
+  // Decorations
+  DECOS.forEach(d=>{
+    const sx=d.x+offX, sy=d.y+offY;
+    if(sx<-50||sx>W+50||sy<-50||sy>H+50) return;
+    ctx.save();
+    ctx.globalAlpha=d.alpha*(0.8+0.2*Math.sin(GS.tick*0.01+d.x));
+    ctx.font=`${Math.floor(d.scale*24)}px serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(d.e,sx,sy);
+    ctx.restore();
+  });
+}
+
+/* ─── DRAW ENEMIES ─── */
+function drawEnemies(){
+  const offX=W/2-GS.camera.x, offY=H/2-GS.camera.y;
+  enemies.forEach(en=>{
+    if(en.state==='dead') return;
+    const sx=en.x+offX, sy=en.y+offY;
+    if(sx<-80||sx>W+80||sy<-80||sy>H+80) return;
+
+    const bob=Math.sin(GS.tick*0.04+en.id*10)*2;
+    const glow=en.state==='hurt'?'rgba(255,50,50,0.6)':'rgba(0,0,0,0)';
+
+    ctx.save();
+
+    // Shadow
+    ctx.fillStyle='rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(sx,sy+en.size*0.5,en.size*0.6,en.size*0.2,0,0,Math.PI*2);
+    ctx.fill();
+
+    // Glow ring (combat)
+    if(en.state==='hurt'||en.state==='attack'){
+      ctx.shadowBlur=20; ctx.shadowColor=glow;
+      ctx.strokeStyle=glow;
+      ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.arc(sx,sy+bob,en.size*0.7,0,Math.PI*2);
+      ctx.stroke();
+    }
+
+    // Body circle
+    const bodyGrad=ctx.createRadialGradient(sx-en.size*0.2,sy+bob-en.size*0.2,2,sx,sy+bob,en.size*0.8);
+    bodyGrad.addColorStop(0,lighten(en.color,0.4));
+    bodyGrad.addColorStop(1,darken(en.color,0.4));
+    ctx.fillStyle=bodyGrad;
+    ctx.shadowBlur=15; ctx.shadowColor=en.color+'88';
+    ctx.beginPath();
+    ctx.arc(sx,sy+bob,en.size*0.7,0,Math.PI*2);
+    ctx.fill();
+
+    // Emoji
+    ctx.shadowBlur=0;
+    ctx.font=`${en.size}px serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(en.emoji,sx,sy+bob);
+
+    // HP bar
+    const hpPct=en.hp/en.maxHp;
+    const bw=en.size*1.4, bh=5;
+    const bx=sx-bw/2, by=sy-en.size-12;
+    ctx.fillStyle='rgba(0,0,0,0.7)';
+    ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle=hpPct>0.5?'#44aa22':hpPct>0.25?'#aaaa22':'#cc2222';
+    ctx.fillRect(bx,by,bw*hpPct,bh);
+    ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=0.5;
+    ctx.strokeRect(bx,by,bw,bh);
+
+    // Rarity glow
+    if(en.rarity==='rare'||en.rarity==='epic'){
+      ctx.strokeStyle=en.rarity==='epic'?'#aa44ff':'#5599ff';
+      ctx.lineWidth=2;
+      ctx.setLineDash([4,4]);
+      ctx.lineDashOffset=-GS.tick*0.1;
+      ctx.beginPath();
+      ctx.arc(sx,sy+bob,en.size*0.85,0,Math.PI*2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.restore();
+  });
+}
+
+/* ─── DRAW BOSS ─── */
+function drawBoss(){
+  if(!BOSS.active||BOSS.dead) return;
+  const offX=W/2-GS.camera.x, offY=H/2-GS.camera.y;
+  const sx=BOSS.x+offX, sy=BOSS.y+offY;
+  const size=BOSS.data.size;
+  const bob=Math.sin(GS.tick*0.03)*4;
+  const t=GS.tick;
+
+  ctx.save();
+
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.6)';
+  ctx.beginPath();
+  ctx.ellipse(sx,sy+size*0.7,size*0.7,size*0.25,0,0,Math.PI*2);
+  ctx.fill();
+
+  // Outer aura rings
+  for(let ring=0;ring<3;ring++){
+    const ringR=size*(1.2+ring*0.3)+Math.sin(t*0.05+ring)*8;
+    const alpha=0.15-ring*0.04;
+    ctx.strokeStyle=BOSS.data.color;
+    ctx.globalAlpha=alpha*(BOSS.enrage?2:1);
+    ctx.lineWidth=2+ring;
+    ctx.beginPath();
+    ctx.arc(sx,sy+bob,ringR,0,Math.PI*2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+
+  // Rotating rune circle
+  ctx.save();
+  ctx.translate(sx,sy+bob);
+  ctx.rotate(t*0.02);
+  ctx.strokeStyle=BOSS.data.color;
+  ctx.lineWidth=1.5;
+  ctx.globalAlpha=0.5;
+  for(let i=0;i<8;i++){
+    const a=i/8*Math.PI*2;
+    const r1=size*0.9, r2=size*1.15;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);
+    ctx.lineTo(Math.cos(a)*r2,Math.sin(a)*r2);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.globalAlpha=1;
+
+  // Main body
+  const bGrad=ctx.createRadialGradient(sx-size*0.2,sy+bob-size*0.2,4,sx,sy+bob,size*1.1);
+  bGrad.addColorStop(0,lighten(BOSS.data.color,0.5));
+  bGrad.addColorStop(0.5,BOSS.data.color);
+  bGrad.addColorStop(1,darken(BOSS.data.color,0.6));
+  ctx.fillStyle=bGrad;
+  ctx.shadowBlur=BOSS.enrage?60:30;
+  ctx.shadowColor=BOSS.data.color;
+  ctx.beginPath();
+  ctx.arc(sx,sy+bob,size*0.9,0,Math.PI*2);
+  ctx.fill();
+
+  // Emoji
+  ctx.shadowBlur=0;
+  ctx.font=`${size}px serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(BOSS.data.emoji,sx,sy+bob);
+
+  // ENRAGE flame overlay
+  if(BOSS.enrage){
+    ctx.font=`${size*0.6}px serif`;
+    ctx.fillText('🔥',sx-size*0.5,sy+bob-size*0.5);
+    ctx.fillText('🔥',sx+size*0.5,sy+bob-size*0.5);
+  }
+
+  // Name tag
+  ctx.shadowBlur=0; ctx.globalAlpha=1;
+  ctx.font='bold 14px Cinzel, serif';
+  ctx.textAlign='center';
+  ctx.fillStyle='#ff3333';
+  ctx.shadowColor='rgba(0,0,0,0.9)'; ctx.shadowBlur=4;
+  ctx.fillText(BOSS.data.name, sx, sy-size-20);
+  ctx.font='11px Cinzel, serif';
+  ctx.fillStyle='rgba(255,150,150,0.8)';
+  ctx.fillText(BOSS.data.origin, sx, sy-size-4);
+
+  // HP bar above boss
+  const hpPct=BOSS.hp/BOSS.maxHp;
+  const bw=size*2, bh=10, bx=sx-bw/2, by=sy-size-38;
+  ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(0,0,0,0.8)';
+  ctx.fillRect(bx,by,bw,bh);
+  const hpGrad=ctx.createLinearGradient(bx,by,bx+bw,by);
+  hpGrad.addColorStop(0,'#5a0000'); hpGrad.addColorStop(1,'#ff3333');
+  ctx.fillStyle=hpGrad;
+  ctx.fillRect(bx,by,bw*hpPct,bh);
+  ctx.strokeStyle='rgba(255,100,100,0.5)';
+  ctx.lineWidth=1;
+  ctx.strokeRect(bx,by,bw,bh);
+
+  ctx.restore();
+}
+
+/* ─── DRAW PLAYER ─── */
+function drawPlayer(){
+  const sx=W/2, sy=H/2;
+  const bob=PLAYER.moving.up||PLAYER.moving.down||PLAYER.moving.left||PLAYER.moving.right
+    ? Math.sin(GS.tick*0.15)*3 : 0;
+  const frame=PLAYER.animFrame;
+
+  ctx.save();
+
+  // Invincibility flash
+  if(PLAYER.invincible>0 && Math.floor(GS.tick/5)%2===0){
+    ctx.globalAlpha=0.5;
+  }
+
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(sx,sy+24,14,6,0,0,Math.PI*2);
+  ctx.fill();
+
+  // Glow aura
+  const aGrad=ctx.createRadialGradient(sx,sy+bob,5,sx,sy+bob,36);
+  aGrad.addColorStop(0,'rgba(200,168,75,0.2)');
+  aGrad.addColorStop(1,'transparent');
+  ctx.fillStyle=aGrad;
+  ctx.beginPath();
+  ctx.arc(sx,sy+bob,36,0,Math.PI*2);
+  ctx.fill();
+
+  // Body
+  const pGrad=ctx.createRadialGradient(sx-6,sy+bob-8,2,sx,sy+bob,20);
+  pGrad.addColorStop(0,'#8855aa');
+  pGrad.addColorStop(0.5,'#4422aa');
+  pGrad.addColorStop(1,'#220a44');
+  ctx.fillStyle=pGrad;
+  ctx.shadowBlur=20; ctx.shadowColor='rgba(120,80,200,0.6)';
+  ctx.beginPath();
+  ctx.arc(sx,sy+bob,18,0,Math.PI*2);
+  ctx.fill();
+
+  // Armor highlight
+  ctx.fillStyle='rgba(255,255,255,0.1)';
+  ctx.beginPath();
+  ctx.arc(sx-5,sy+bob-5,10,Math.PI,Math.PI*1.5);
+  ctx.fill();
+
+  // Player emoji
+  ctx.shadowBlur=0;
+  ctx.font='28px serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(PLAYER.classIcon, sx, sy+bob);
+
+  // Attack ring
+  if(PLAYER.attackTimer > 300){
+    ctx.strokeStyle='rgba(200,168,75,0.8)';
+    ctx.lineWidth=2;
+    ctx.shadowColor='rgba(200,168,75,0.5)'; ctx.shadowBlur=8;
+    ctx.beginPath();
+    ctx.arc(sx,sy,60,0,Math.PI*2);
+    ctx.stroke();
+  }
+
+  // Invincibility ring
+  if(PLAYER.invincible>0){
+    ctx.strokeStyle='rgba(100,200,255,0.8)';
+    ctx.lineWidth=3;
+    ctx.shadowColor='rgba(100,200,255,0.8)'; ctx.shadowBlur=15;
+    ctx.beginPath();
+    ctx.arc(sx,sy+bob,28+Math.sin(GS.tick*0.1)*3,0,Math.PI*2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/* ─── MINIMAP ─── */
+function drawMinimap(){
+  mmCtx.fillStyle='rgba(5,2,10,0.9)';
+  mmCtx.fillRect(0,0,120,120);
+  const scale=120/GS.world.w*8; // 8x zoom
+  const offX=60-PLAYER.x*scale, offY=60-PLAYER.y*scale;
+
+  // Enemies
+  enemies.forEach(en=>{
+    if(en.state==='dead') return;
+    const d=dist(PLAYER.x,PLAYER.y,en.x,en.y);
+    if(d>500) return;
+    mmCtx.fillStyle='#cc2222';
+    mmCtx.fillRect(en.x*scale+offX-1.5,en.y*scale+offY-1.5,3,3);
+  });
+
+  // Boss
+  if(BOSS.active&&!BOSS.dead){
+    mmCtx.fillStyle='#ff00ff';
+    mmCtx.fillRect(BOSS.x*scale+offX-3,BOSS.y*scale+offY-3,6,6);
+  }
+
+  // Player
+  mmCtx.fillStyle='#f0d080';
+  mmCtx.beginPath();
+  mmCtx.arc(60,60,3,0,Math.PI*2);
+  mmCtx.fill();
+
+  // Border
+  mmCtx.strokeStyle='rgba(200,168,75,0.5)';
+  mmCtx.lineWidth=1;
+  mmCtx.strokeRect(0,0,120,120);
+}
+
+/* ─── AMBIENT EFFECTS ─── */
+function drawAmbient(){
+  // Vignette
+  const vig=ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.8);
+  vig.addColorStop(0,'transparent');
+  vig.addColorStop(1,'rgba(0,0,0,0.7)');
+  ctx.fillStyle=vig;
+  ctx.fillRect(0,0,W,H);
+
+  // Atmospheric particles
+  if(Math.random()<0.05){
+    spawnParticles(
+      GS.camera.x-W/2+Math.random()*W,
+      GS.camera.y-H/2+Math.random()*H,
+      'magic',1
+    );
+  }
+}
+
+/* ─── DEATH SCREEN ─── */
+function onDeath(){
+  PLAYER.hp=0;
+  updateBars();
+  addLog('💀 Hayatta kalamadiniz!','dmg');
+  spawnParticles(PLAYER.x,PLAYER.y,'blood',30);
+  setTimeout(()=>{
+    ctx.save();
+    ctx.fillStyle='rgba(100,0,0,0.85)';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#ff4444';
+    ctx.shadowBlur=30; ctx.shadowColor='#ff0000';
+    ctx.font=`bold ${Math.floor(W*0.08)}px Cinzel Decorative,serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('ÖLDÜNÜZ', W/2, H/2-40);
+    ctx.fillStyle='rgba(200,168,75,0.8)';
+    ctx.shadowBlur=0;
+    ctx.font=`${Math.floor(W*0.025)}px Cinzel,serif`;
+    ctx.fillText(`Lv.${PLAYER.level} — ${PLAYER.kills} Öldürme — ${PLAYER.gold}🪙 Altın`, W/2, H/2+20);
+    ctx.font=`${Math.floor(W*0.02)}px Cinzel,serif`;
+    ctx.fillStyle='rgba(200,168,75,0.5)';
+    ctx.fillText('Yeniden başlamak için tıklayın', W/2, H/2+60);
+    ctx.restore();
+    canvas.onclick=()=>location.reload();
+  }, 1500);
+}
+
+/* ─── HELPER COLORS ─── */
+function lighten(hex,amt){
+  const c=parseInt(hex.replace('#',''),16);
+  const r=Math.min(255,((c>>16)&0xff)+Math.floor(amt*255));
+  const g=Math.min(255,((c>>8)&0xff)+Math.floor(amt*255));
+  const b=Math.min(255,(c&0xff)+Math.floor(amt*255));
+  return `rgb(${r},${g},${b})`;
+}
+function darken(hex,amt){
+  const c=parseInt(hex.replace('#',''),16);
+  const r=Math.max(0,((c>>16)&0xff)-Math.floor(amt*255));
+  const g=Math.max(0,((c>>8)&0xff)-Math.floor(amt*255));
+  const b=Math.max(0,(c&0xff)-Math.floor(amt*255));
+  return `rgb(${r},${g},${b})`;
+}
+function dist(x1,y1,x2,y2){ return Math.hypot(x2-x1,y2-y1); }
+
+/* ─── GAME LOOP ─── */
+let lastTime=0;
+function gameLoop(ts){
+  const dt=Math.min(50,ts-lastTime);
+  lastTime=ts;
+  GS.tick++;
+
+  if(GS.phase!=='playing'){ requestAnimationFrame(gameLoop); return; }
+
+  // Update
+  updatePlayer(dt);
+  updateEnemies(dt);
+  updateBoss(dt);
+  updateParticles(dt/1000);
+
+  // Draw
+  drawWorld();
+  drawEnemies();
+  drawBoss();
+  drawPlayer();
+  drawAmbient();
+  drawParticles();
+  drawMinimap();
+
+  // Update HUD occasionally
+  if(GS.tick%10===0){
+    updateHUD();
+    updateBars();
+  }
+
+  // Respawn dead enemies periodically
+  const aliveCount=enemies.filter(e=>e.state!=='dead').length;
+  if(aliveCount<20&&GS.tick%300===0){
+    spawnEnemies();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+/* ─── AMBIENT BG PULSE for non-playing scenes ─── */
+(function ambientLoop(){
+  if(GS.phase!=='playing'){
+    ctx.fillStyle='rgba(0,0,0,0.05)';
+    ctx.fillRect(0,0,W,H);
+  }
+  requestAnimationFrame(()=>{ if(GS.phase!=='playing') ambientLoop(); });
+})();
+
+/* ─── TUTORIAL TIP ─── */
+setTimeout(()=>{
+  if(GS.phase==='playing'){
+    addLog('💡 WASD/Ok tuşları: Hareket | Z/Boşluk: Saldırı | Q-I: Yetenekler','');
+    addLog('💡 Boss savaşçılara yaklaş ve saldır!','');
+  }
+}, 2000);
+
+</script>
+</body>
+</html>
